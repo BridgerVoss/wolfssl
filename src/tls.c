@@ -4485,6 +4485,7 @@ static int TLSX_SupportedCurve_New(SupportedCurve** curve, word16 name,
 
     (*curve)->name = name;
     (*curve)->next = NULL;
+    (*curve)->isSharedCurve = 0;
 
     return 0;
 }
@@ -4843,6 +4844,20 @@ int TLSX_SupportedCurve_Parse(const WOLFSSL* ssl, const byte* input,
         if (ret != WOLFSSL_SUCCESS && ret != WC_NO_ERR_TRACE(BAD_FUNC_ARG)) {
             return ret;
         }
+    /* During handshake, check if curve is shared */
+    if (isRequest) {
+        TLSX* ext = TLSX_Find(*extensions, TLSX_SUPPORTED_GROUPS);
+        if (ext != NULL) {
+            SupportedCurve* curve = (SupportedCurve*)ext->data;
+            while (curve != NULL) {
+                if (curve->name == name) {
+                    curve->isSharedCurve = 1;
+                    break;
+                }
+                curve = curve->next;
+            }
+        }
+    }
     }
 
     return 0;
@@ -5242,7 +5257,10 @@ int TLSX_ValidateSupportedCurves(const WOLFSSL* ssl, byte first, byte second,
         if (wolfSSL_curve_is_disabled(ssl, curve->name))
             continue;
     #endif
-
+        if((ssl->options.userCurves || ssl->ctx->userCurves) &&
+             !IsAtLeastTLSv1_3(ssl->version) && (curve)->isSharedCurve != 1){
+            continue;
+        }
         /* find supported curve */
         switch (curve->name) {
 #ifdef HAVE_ECC

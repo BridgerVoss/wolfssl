@@ -3424,6 +3424,7 @@ WOLFSSL_LOCAL void TLSX_SignatureAlgorithms_FreeAll(SignatureAlgorithms* sa,
 
 typedef struct SupportedCurve {
     word16 name;                 /* Curve Names */
+    int isSharedCurve;
     struct SupportedCurve* next; /* List Behavior */
 } SupportedCurve;
 
